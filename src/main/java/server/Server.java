@@ -1,3 +1,5 @@
+package server;
+
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpContext;
 import com.sun.net.httpserver.HttpExchange;
@@ -8,7 +10,6 @@ import java.io.OutputStream;
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.util.Arrays;
-import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 public class Server {
@@ -16,24 +17,40 @@ public class Server {
     private static final String STATUS_ENDPOINT = "/status";
 
     private final int port;
+    private HttpServer server;
 
-    private HttpServer httpServer;
+    public static void main(String[] args) {
+        int serverPort = 8080;
+        if (args.length == 1) {
+            serverPort = Integer.parseInt(args[0]);
+        }
 
+        Server webServer = new Server(serverPort);
+        webServer.startServer();
+
+        System.out.println("Server is listening on port " + serverPort);
+    }
 
     public Server(int port) {
         this.port = port;
     }
 
-    public void startServer() throws IOException {
-        this.httpServer = HttpServer.create(new InetSocketAddress(port),0);
-        HttpContext taskContext = httpServer.createContext(TASK_ENDPOINT);
-        HttpContext statusContext = httpServer.createContext(STATUS_ENDPOINT);
+    public void startServer() {
+        try {
+            this.server = HttpServer.create(new InetSocketAddress(port), 0);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return;
+        }
+
+        HttpContext statusContext = server.createContext(STATUS_ENDPOINT);
+        HttpContext taskContext = server.createContext(TASK_ENDPOINT);
 
         statusContext.setHandler(this::handleStatusCheckRequest);
         taskContext.setHandler(this::handleTaskRequest);
 
-        httpServer.setExecutor(Executors.newFixedThreadPool(8));
-        httpServer.start();
+        server.setExecutor(Executors.newFixedThreadPool(8));
+        server.start();
     }
 
     private void handleTaskRequest(HttpExchange exchange) throws IOException {
@@ -41,27 +58,32 @@ public class Server {
             exchange.close();
             return;
         }
+
         Headers headers = exchange.getRequestHeaders();
         if (headers.containsKey("X-Test") && headers.get("X-Test").get(0).equalsIgnoreCase("true")) {
-            String msg = "Wazaaaap";
-            sendResponse(msg.getBytes(),exchange);
+            String dummyResponse = "123\n";
+            sendResponse(dummyResponse.getBytes(), exchange);
             return;
         }
-        boolean isDebug = false;
+
+        boolean isDebugMode = false;
         if (headers.containsKey("X-Debug") && headers.get("X-Debug").get(0).equalsIgnoreCase("true")) {
-            isDebug = true;
+            isDebugMode = true;
         }
 
         long startTime = System.nanoTime();
+
         byte[] requestBytes = exchange.getRequestBody().readAllBytes();
         byte[] responseBytes = calculateResponse(requestBytes);
+
         long finishTime = System.nanoTime();
 
-        if (isDebug) {
-            String debugMessage = String.format("Operation took %d ns\n",finishTime-startTime);
+        if (isDebugMode) {
+            String debugMessage = String.format("Operation took %d ns", finishTime - startTime);
             exchange.getResponseHeaders().put("X-Debug-Info", Arrays.asList(debugMessage));
         }
-        sendResponse(responseBytes,exchange);
+
+        sendResponse(responseBytes, exchange);
     }
 
     private byte[] calculateResponse(byte[] requestBytes) {
@@ -69,11 +91,13 @@ public class Server {
         String[] stringNumbers = bodyString.split(",");
 
         BigInteger result = BigInteger.ONE;
-        for(String number: stringNumbers) {
+
+        for (String number : stringNumbers) {
             BigInteger bigInteger = new BigInteger(number);
             result = result.multiply(bigInteger);
         }
-        return String.format("Result of multiplication is %s\n",result).getBytes();
+
+        return String.format("Result of the multiplication is %s\n", result).getBytes();
     }
 
     private void handleStatusCheckRequest(HttpExchange exchange) throws IOException {
@@ -82,26 +106,17 @@ public class Server {
             return;
         }
 
-        String responseMessage = "Sever is alive";
-        sendResponse(responseMessage.getBytes(),exchange);
+        String responseMessage = "Server is alive\n";
+        sendResponse(responseMessage.getBytes(), exchange);
     }
 
-    private void sendResponse(byte[] bytes, HttpExchange exchange) throws IOException {
-        exchange.sendResponseHeaders(200,bytes.length);
+    private void sendResponse(byte[] responseBytes, HttpExchange exchange) throws IOException {
+        exchange.sendResponseHeaders(200, responseBytes.length);
         OutputStream outputStream = exchange.getResponseBody();
-        outputStream.write(bytes);
+        outputStream.write(responseBytes);
         outputStream.flush();
         outputStream.close();
+        exchange.close();
     }
 
-    public static void main(String[] args) throws IOException {
-        int port = 8080;
-        if (args.length == 1) {
-            port = Integer.parseInt(args[0]);
-        }
-        Server server = new Server(port);
-        server.startServer();
-
-        System.out.println("Server is listening on port: " + port);
-    }
 }
