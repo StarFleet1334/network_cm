@@ -1,6 +1,4 @@
-package client;
-
-import client.Aggregator;
+package network.client;
 
 import java.util.Arrays;
 import java.util.List;

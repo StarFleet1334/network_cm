@@ -1,6 +1,4 @@
-package client;
-
-import server.Server;
+package network.client;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;

@@ -22,7 +22,7 @@
  *  SOFTWARE.
  */
 
-package client;
+package network.client;
 
 import java.net.URI;
 import java.net.http.HttpClient;

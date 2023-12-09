@@ -29,7 +29,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>server.Server</mainClass>
+                            <mainClass>network.server.Server</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>

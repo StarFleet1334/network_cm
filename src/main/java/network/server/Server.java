@@ -1,4 +1,4 @@
-package server;
+package network.server;
 
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpContext;
